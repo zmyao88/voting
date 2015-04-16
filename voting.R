@@ -103,11 +103,11 @@ max_fit <- lm(percentage_no_votes ~ overall_turnout + cloudcoverelectionday_is0 
                   highestqualification_none + wind_speed_electionday,
               data=scottland)
 
-step_result <- step(min_fit, direction="both", 
+step_result_scot <- step(min_fit, direction="both", 
                     scope=list(lower = min_fit, 
                                upper = max_fit))
-step_result$anova
-summary(step_result)
+step_result_scot$anova
+summary(step_result_scot)
 
 # correlation of windspeed of 2014/09/17 vs pct no vote
 cor(x=scottland$wind_sep172014, scottland$percentage_no_votes, 
@@ -162,6 +162,12 @@ step_result_us <- step(min_fit_us, direction="both",
                                upper = max_fit_us))
 step_result$anova
 summary(step_result_us)
+
+# showup rate correlation with windspeed
+cor(us_vote$turnout_estimate, us_vote$windspeed_electionday)
+cor.test(us_vote$turnout_estimate, us_vote$windspeed_electionday)
+summary(lm(turnout_estimate~windspeed_electionday, us_vote))
+
 # visualize mccain 
 ggplot(data = us_vote, aes(x=windspeed_electionday, 
                              y = mccain_votes)) + 
@@ -177,6 +183,75 @@ ggplot(data = us_vote, aes(x=windspeed_electionday,
     geom_point(alpha=0.5, size=5) + 
     stat_smooth(method = "lm")  
 
+
+
+robust_fit <- rlm(mccain_votes~ uninsured + hispaniclatino + 
+                      windspeed_electionday + turnout_estimate + 
+                      asian + americanindian + nativehawaiian, 
+                    data = us_vote)
+summary(robust_fit)
+
+
+# with HI removed
+lev = hat(model.matrix(step_result_us))
+us_lev <- data.frame(state=us_vote$state, leverage = lev)
+ggplot(us_lev, aes(x=row.names(lev_df), y=leverage)) + 
+    geom_text(aes(label = state))
+
+cook <- cooks.distance(step_result_us)
+us_cook <- data.frame(state=us_vote$state, cook_dist = cook)
+
+ggplot(us_cook, aes(x=row.names(us_cook), y=cook_dist)) + 
+    geom_text(aes(label = state))
+
+# seems that removing HI & AK gives wind more importance hmmm...
+us_hi <- us_vote %>% filter(!state %in% c("HI", "AK"))
+min_fit_us_hi <- lm(mccain_votes ~ 1, data=us_hi)
+max_fit_us_hi <- lm(mccain_votes ~ turnout_estimate + windspeednov2004 + 
+                     windspeednov2005 + windspeednov2006 + windspeednov2007 + 
+                     windspeednov2008 + americanindian + asian + black + 
+                     hispaniclatino + nativehawaiian + mixedrace +
+                     nonhispanicwhite + medianincome + education + uninsured +
+                     windspeed_electionday,
+                 data=us_hi)
+
+step_result_us_hi <- step(min_fit_us_hi, direction="both", 
+                       scope=list(lower = min_fit_us_hi, 
+                                  upper = max_fit_us_hi))
+step_result_us_hi$anova
+summary(step_result_us_hi)
+summary(step_result_us)
+
+### Last experiment windspeeed vs residual 
+full_mdl <- lm(mccain_votes ~ turnout_estimate + windspeednov2004 + 
+       windspeednov2005 + windspeednov2006 + windspeednov2007 + 
+       windspeednov2008 + americanindian + asian + black + 
+       hispaniclatino + nativehawaiian + mixedrace +
+       nonhispanicwhite + medianincome + education + uninsured,
+   data=us_vote)
+# seems other variables contains windspeed info, test is not significant
+summary(lm(full_mdl$residuals~us_vote$windspeed_electionday))
+
+
+
+#
+wind_res <- lm(mccain_votes~windspeednovember3rd2004 + windspeednovember3rd2005 + 
+                   windspeednovember3rd2006 + windspeednovember2rd2007 + 
+                   windspeednovember3rd2008, 
+           data = us_hi)$residuals
+summary(lm(wind_res~us_hi$windspeed_electionday))
+plot(lm(wind_res~us_hi$windspeed_electionday))
+plot(us_hi$windspeed_electionday, wind_res)
+
+
+
+
+
+
+
+####
+plot(robust_fit)
+plot(step_result_us)
 require(car)
 outlierTest(step_result_us)
 qqPlot(step_result_us)
