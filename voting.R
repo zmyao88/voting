@@ -128,6 +128,25 @@ ggplot(data = scottland, aes(x=wind_speed_electionday,
         geom_point(alpha=0.5, size=5) + 
         stat_smooth(method = "lm")
 
+
+### Last experiment windspeeed vs residual 
+scotland_no_wind_mdl <- lm(percentage_no_votes ~ overall_turnout + cloudcoverelectionday_is0 + 
+                               socialgrade_ab + religion_churchofscotland_percent + 
+                               employment_parttime + nationalidentity_scotlandonly + 
+                               householdcomposition_onepersonhousehold_65andunder + 
+                               highestqualification_none,
+                        data=scottland)
+wind_speed_electionday
+# seems other variables contains windspeed info, test is not significant
+# not sure if this is what you wanted 
+scotland_res_wind_df <- data.frame( res= scotland_no_wind_mdl$residuals, windspeed = scottland$wind_speed_electionday)
+ggplot(scotland_res_wind_df, aes(x=windspeed, y = res)) + 
+    geom_point() +
+    geom_smooth(method="lm") 
+summary(lm(res~windspeed, data = scotland_res_wind_df))
+
+
+
 # pg 9 US vote
 # Yes campaign
 mean(voting_check$obama_rf, na.rm = T)
@@ -160,7 +179,7 @@ max_fit_us <- lm(mccain_votes ~ turnout_estimate + windspeednov2004 +
 step_result_us <- step(min_fit_us, direction="both", 
                     scope=list(lower = min_fit_us, 
                                upper = max_fit_us))
-step_result$anova
+step_result_us$anova
 summary(step_result_us)
 
 # showup rate correlation with windspeed
@@ -223,18 +242,26 @@ summary(step_result_us_hi)
 summary(step_result_us)
 
 ### Last experiment windspeeed vs residual 
-full_mdl <- lm(mccain_votes ~ turnout_estimate + windspeednov2004 + 
+no_wind_mdl <- lm(mccain_votes ~ turnout_estimate + windspeednov2004 + 
        windspeednov2005 + windspeednov2006 + windspeednov2007 + 
        windspeednov2008 + americanindian + asian + black + 
        hispaniclatino + nativehawaiian + mixedrace +
        nonhispanicwhite + medianincome + education + uninsured,
-   data=us_vote)
+   data=us_hi)
+
 # seems other variables contains windspeed info, test is not significant
-summary(lm(full_mdl$residuals~us_vote$windspeed_electionday))
+# not sure if this is what you wanted 
+res_wind_df <- data.frame( res= no_wind_mdl$residuals, windspeed = us_hi$windspeed_electionday)
+ggplot(res_wind_df, aes(x=windspeed, y = res)) + 
+    geom_point() +
+    geom_smooth(method="lm") 
+summary(lm(res~windspeed, data = res_wind_df))
 
 
 
-#
+
+
+## control all other wind info and regress vote against election day wind speed
 wind_res <- lm(mccain_votes~windspeednovember3rd2004 + windspeednovember3rd2005 + 
                    windspeednovember3rd2006 + windspeednovember2rd2007 + 
                    windspeednovember3rd2008, 
